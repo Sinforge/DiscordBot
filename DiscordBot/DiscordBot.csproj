@@ -9,9 +9,12 @@
 
   <ItemGroup>
     <PackageReference Include="Discord.Net" Version="3.8.1" />
+    <PackageReference Include="Discord.Net.Providers.WS4Net" Version="2.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Programs\" />
     <Folder Include="Services\" />
   </ItemGroup>
 
