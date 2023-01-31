@@ -5,9 +5,11 @@ using Discord.Interactions;
 using Discord.Net;
 using Discord.Net.Providers.WS4Net;
 using Discord.WebSocket;
+using DiscordBot.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Victoria;
 
 namespace DiscordBot
 {
@@ -30,6 +32,9 @@ namespace DiscordBot
                 service = new ServiceCollection()
                     .AddSingleton(client)
                     .AddSingleton(command)
+                    .AddSingleton<LavaRestClient>()
+                    .AddSingleton<LavaSocketClient>()
+                    .AddSingleton<MusicService>()
                     .BuildServiceProvider();
 
 
@@ -59,7 +64,9 @@ namespace DiscordBot
 
                 }
                 await client.LoginAsync(TokenType.Bot, token);
-                await client.StartAsync();
+                await service.GetRequiredService<MusicService>().InitializeAsync();
+
+            await client.StartAsync();
                 await Task.Delay(-1);
             }
 
@@ -112,6 +119,7 @@ namespace DiscordBot
                     break;
                 }
             }
+            
 
             private async Task HandleListRoleCommand(SocketSlashCommand command)
             {
