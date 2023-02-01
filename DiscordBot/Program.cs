@@ -6,6 +6,7 @@ using Discord.Net;
 using Discord.Net.Providers.WS4Net;
 using Discord.WebSocket;
 using DiscordBot.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -28,45 +29,45 @@ namespace DiscordBot
                     GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent
                 });
                 command = new CommandService();
-                //Add Singletons
-                service = new ServiceCollection()
-                    .AddSingleton(client)
-                    .AddSingleton(command)
-                    .AddSingleton<LavaRestClient>()
-                    .AddSingleton<LavaSocketClient>()
-                    .AddSingleton<MusicService>()
-                    .BuildServiceProvider();
-
-
-                //Add logs
-                client.Log += Log;
-                client.SlashCommandExecuted += SlashCommandHandler;
-                 client.Ready += ClientReady;
-
-                //Add command handler
-                client.MessageReceived += MessageReceived;
-
-
-                //Connect Command.cs file
-                await command.AddModulesAsync(Assembly.GetEntryAssembly(), service);
 
                 string token;
-
+                string connectionString;
 
                 string workingDirectory = Environment.CurrentDirectory;
                 string projectDirectory = Directory.GetParent(workingDirectory).Parent.Parent.FullName;
                 using (TextReader reader = File.OpenText(projectDirectory + "\\config.json"))
                 {
                     JObject json = JObject.Parse(reader.ReadToEnd());
-                    Console.WriteLine(json.ToString());
-                    Console.WriteLine(json["Token"].ToString());
                     token = json["Token"].ToString();
+                    connectionString = json["ConnectionString"].ToString();
 
                 }
+
+                //Add dependencies
+                service = new ServiceCollection()
+                        .AddSingleton(client)
+                        .AddSingleton(command)
+                        .AddSingleton<LavaRestClient>()
+                        .AddSingleton<LavaSocketClient>()
+                        .AddSingleton<MusicService>()
+                        .AddDbContext<ApplicationDbContext>(op=> op.UseSqlServer(connectionString))
+                        .BuildServiceProvider();
+
+
+                //Add logs
+                client.Log += Log;
+                client.SlashCommandExecuted += SlashCommandHandler;
+                client.Ready += ClientReady;
+                //Add command handler
+                client.MessageReceived += MessageReceived;
+                //Connect Command.cs file
+                await command.AddModulesAsync(Assembly.GetEntryAssembly(), service);
+
+                
                 await client.LoginAsync(TokenType.Bot, token);
                 await service.GetRequiredService<MusicService>().InitializeAsync();
 
-            await client.StartAsync();
+                await client.StartAsync();
                 await Task.Delay(-1);
             }
 
