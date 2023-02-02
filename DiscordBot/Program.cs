@@ -47,6 +47,7 @@ namespace DiscordBot
                 service = new ServiceCollection()
                         .AddSingleton(client)
                         .AddSingleton(command)
+                        .AddSingleton<DotaStatsService>()
                         .AddSingleton<LavaRestClient>()
                         .AddSingleton<LavaSocketClient>()
                         .AddSingleton<MusicService>()

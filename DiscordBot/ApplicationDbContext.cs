@@ -25,6 +25,8 @@ namespace DiscordBot
     public class DotaUser
     {
         public ulong Id { get; set; }
+        
+        public ulong DiscordId { get; set; }
         public ulong DotaBuffId { get; set; }
 
     }
