@@ -7,6 +7,8 @@ using Discord;
 using Discord.Commands;
 using DiscordBot.Services;
 using Microsoft.EntityFrameworkCore;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Edge;
 
 namespace DiscordBot.Modules
 {
@@ -73,22 +75,38 @@ namespace DiscordBot.Modules
         }
 
 
-        [Command("most-played-heroes")]
-        public async Task GetHeroes(IUser user = null)
+        [Command("most-played-heroes", RunMode = RunMode.Async)]
+        public async Task GetHeroes(IUser user)
         {
-            ulong dotabuffId;
+            DotaUser dotaUser;
             if (user == null)
             {
-                dotabuffId = _db.Users.FirstOrDefault(u => u.DiscordId == Context.User.Id).DotaBuffId;
+                dotaUser = await _db.Users.FirstOrDefaultAsync(u => u.DiscordId == Context.User.Id);
             }
             else
             {
-                dotabuffId = _db.Users.FirstOrDefault(u => u.DiscordId == user.Id).DotaBuffId;
+                dotaUser = await _db.Users.FirstOrDefaultAsync(u => u.DiscordId == user.Id);
             }
 
-            Console.WriteLine(dotabuffId);
+            IUser currentUser = Context.Guild.Users.FirstOrDefault(u => u.Id == dotaUser.DiscordId);
 
-            _dotaStatsService.GetMostPlayedHeroes(dotabuffId);
+            Console.WriteLine("Я получаю данные с дотабафа");
+            List<string> listHeroes = await _dotaStatsService.GetMostPlayedHeroes(dotaUser.DotaBuffId);
+            StringBuilder info = new StringBuilder("Hero-Matches-WinRate-KDA-Role-Lane\n");
+            foreach (var data in listHeroes)
+            {
+                info.AppendLine(data);
+            }
+
+            Console.WriteLine(info.ToString());
+            var embedBuilder = new EmbedBuilder()
+                .WithAuthor(currentUser.ToString()
+                    , currentUser.GetAvatarUrl() ?? currentUser.GetDefaultAvatarUrl())
+                .WithTitle("Most played heroes")
+                .WithDescription(info.ToString())
+                .WithColor(Color.Purple)
+                .WithCurrentTimestamp();
+            await ReplyAsync(embed: embedBuilder.Build());
         }
 
     }
