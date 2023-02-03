@@ -1,5 +1,6 @@
 ﻿
 using Discord;
+using Newtonsoft.Json.Linq;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Edge;
 
@@ -13,13 +14,23 @@ namespace DiscordBot.Services
             IWebDriver driver = new EdgeDriver();
             INavigation nav = driver.Navigate();
             nav.GoToUrl($"https://www.dotabuff.com/players/{dotabuffId}/heroes");
-            var elements = await Task.Run(async () =>
+            var task = Task.Run(async() => driver.FindElement(By.TagName("tbody")).Text.Split("\r\n"));
+
+            string[] elements;
+            if(task.Wait(TimeSpan.FromSeconds(10)))
             {
-                return driver.FindElement(By.TagName("tbody")).Text.Split("\r\n");
-            });
+                Console.WriteLine("i get data");
+                elements = task.Result;
+            }
+            else
+            {
+                driver.Close();
+                driver.Quit();
+                return listHeroes;
+            }
+
             driver.Close();
             driver.Quit();
-            Console.WriteLine("Получил данные с дотабафа");
             Console.WriteLine(elements);
             for (int i = 0; i < elements.Length;)
             {
@@ -35,6 +46,33 @@ namespace DiscordBot.Services
             return listHeroes;
 
 
+        }
+
+        public async Task<ulong> GetSteamId(string customURL)
+        {
+            string steamApiKey;
+            string workingDirectory = Environment.CurrentDirectory;
+            string projectDirectory = Directory.GetParent(workingDirectory).Parent.Parent.FullName;
+            using (TextReader reader = File.OpenText(projectDirectory + "\\config.json"))
+            {
+                JObject json = JObject.Parse(reader.ReadToEnd());
+                steamApiKey = json["SteamWebApiKey"].ToString();
+            }
+            using (HttpClient client = new HttpClient())
+            {
+                string response = await client.GetStringAsync($"http://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?key={steamApiKey}&vanityurl={customURL}");
+                JObject json = JObject.Parse(response);
+                if (int.Parse(json["response"]["success"].ToString()) == 1)
+                {
+                    Console.WriteLine("Successful request");
+                    return ulong.Parse(json["response"]["steamid"].ToString());
+                }
+                else
+                {
+                    Console.WriteLine("Bad request");
+                    return 0;
+                }
+            }
         }
 
 

@@ -74,6 +74,48 @@ namespace DiscordBot.Modules
 
         }
 
+        [Command("most-played-heroes", RunMode = RunMode.Async)]
+        public async Task GetHeroes([Remainder] string customId)
+        {
+            ulong steamId = await _dotaStatsService.GetSteamId(customId);
+            if (steamId == 0)
+            {
+                await ReplyAsync("No matches");
+            }
+            else
+            {
+                await GetHeroes(steamId);
+            }
+        }
+
+        [Command("most-played-heroes", RunMode = RunMode.Async)]
+        public async Task GetHeroes(ulong steamId)
+        {
+            
+            List<string> listHeroes = await _dotaStatsService.GetMostPlayedHeroes(steamId);
+            StringBuilder info;
+            if (listHeroes.Count != 0)
+            {
+                info = new StringBuilder("Hero-Matches-WinRate-KDA-Role-Lane\n");
+                foreach (var data in listHeroes)
+                {
+                    info.AppendLine(data);
+                }
+            }
+            else
+            {
+                info = new StringBuilder("User's dotabuff profile is private");
+            }
+
+
+            Console.WriteLine(info.ToString());
+            var embedBuilder = new EmbedBuilder()
+                .WithTitle("Most played heroes")
+                .WithDescription(info.ToString())
+                .WithColor(Color.Purple)
+                .WithCurrentTimestamp();
+            await ReplyAsync(embed: embedBuilder.Build());
+        }
 
         [Command("most-played-heroes", RunMode = RunMode.Async)]
         public async Task GetHeroes(IUser user)
@@ -90,13 +132,22 @@ namespace DiscordBot.Modules
 
             IUser currentUser = Context.Guild.Users.FirstOrDefault(u => u.Id == dotaUser.DiscordId);
 
-            Console.WriteLine("Я получаю данные с дотабафа");
             List<string> listHeroes = await _dotaStatsService.GetMostPlayedHeroes(dotaUser.DotaBuffId);
-            StringBuilder info = new StringBuilder("Hero-Matches-WinRate-KDA-Role-Lane\n");
-            foreach (var data in listHeroes)
+            StringBuilder info;
+            if (listHeroes.Count != 0)
             {
-                info.AppendLine(data);
+                info = new StringBuilder("Hero-Matches-WinRate-KDA-Role-Lane\n");
+                foreach (var data in listHeroes)
+                {
+                    info.AppendLine(data);
+                }
             }
+            else
+            {
+                info = new StringBuilder("User's dotabuff profile is private");
+            }
+           
+            
 
             Console.WriteLine(info.ToString());
             var embedBuilder = new EmbedBuilder()
