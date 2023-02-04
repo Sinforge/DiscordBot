@@ -1,4 +1,5 @@
 ﻿
+using AngleSharp.Html.Parser;
 using Discord;
 using Newtonsoft.Json.Linq;
 using OpenQA.Selenium;
@@ -11,31 +12,32 @@ namespace DiscordBot.Services
         public async Task<List<string>> GetMostPlayedHeroes(ulong dotabuffId)
         {
             List<string> listHeroes = new List<string>();
-            IWebDriver driver = new EdgeDriver();
-            INavigation nav = driver.Navigate();
-            nav.GoToUrl($"https://www.dotabuff.com/players/{dotabuffId}/heroes");
-            var task = Task.Run(async() => driver.FindElement(By.TagName("tbody")).Text.Split("\r\n"));
+            string response;
+            using (HttpClient client = new HttpClient())
+            {
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Accept",
+                    "text/html,application/xhtml+xml,application/xml");
+                client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Charset", "UTF-8");
 
-            string[] elements;
-            if(task.Wait(TimeSpan.FromSeconds(10)))
-            {
-                Console.WriteLine("i get data");
-                elements = task.Result;
+                response  = await client.GetStringAsync(new Uri($"https://www.dotabuff.com/players/{dotabuffId}/heroes"));
+
             }
-            else
+
+            HtmlParser parser = new HtmlParser();
+            var parsedContent = await parser.ParseDocumentAsync(response);
+            if (parsedContent.QuerySelector(".fa fa-lock") != null)
             {
-                driver.Close();
-                driver.Quit();
                 return listHeroes;
             }
 
-            driver.Close();
-            driver.Quit();
-            Console.WriteLine(elements);
-            for (int i = 0; i < elements.Length;)
+            var tdElements = parsedContent.Elemen ("td a");    
+            for (int i = 0; i < tdElements.Length;)
             {
-                listHeroes.Add(elements[i] + "-" + elements[i + 2] + "-" + elements[i + 3] + "-" + elements[i + 4] + "-" + elements[i + 5].Split(" ")[0] +
-                "-" + elements[i + 6].Substring(0, elements[i + 6].Length - 2) + "\n");
+                listHeroes.Add(tdElements[i].TextContent + "-" + tdElements[i + 2].TextContent 
+                               + "-" + tdElements[i + 3].TextContent + "-" + tdElements[i + 4].TextContent + "-" 
+                               + tdElements[i + 5].TextContent.Split(" ")[0] + 
+                               "-" + tdElements[i + 6].TextContent.Substring(0, tdElements[i + 6].TextContent.Length - 2) + "\n");
                 i += 7;
                 if (listHeroes.Count >= 5)
                 {
